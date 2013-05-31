@@ -173,13 +173,13 @@ class IrcBot:
             rev_str = ' '.join(rev_list[1:])
             str_ = rev_str[::-1]
             return str_
-
-        if len(str(string)) > 350: #protect from kicked for flooding
+        #increased num from 350 to 500 to allow more chars for review function
+        if len(str(string)) > 500: #protect from kicked for flooding
         #    self.sock.send('PRIVMSG {0} :{1}\r\n'.format(self.channel, string[:350]).encode())
         #    self.sock.send('PRIVMSG {0} :{1}\r\n'.format(self.channel, string[350:600]).encode())
-             s1 = sep_space(string[:350])
+             s1 = sep_space(string[:500])
              self.sock.send('PRIVMSG {0} :{1}\r\n'.format(self.channel, s1).encode())
-             s2 = sep_space(string[len(s1):700])
+             s2 = sep_space(string[len(s1):1000])
              self.sock.send('PRIVMSG {0} :{1}\r\n'.format(self.channel, s2).encode())
         else:
             self.sock.send('PRIVMSG {0} :{1}\r\n'.format(self.channel, string).encode())
@@ -246,6 +246,7 @@ class IrcBot:
             pass
 
     def ping_pong(self):
+#change ping pong to every 30 seconds instead of every loop
         '''server ping pong handling'''
         try:
             if self.data[:4] == 'PING':
@@ -329,8 +330,12 @@ class IrcBot:
             except KeyboardInterrupt:
                 sys.exit()
             except:
-                self.say('{} {}'.format(sys.exc_info()[0],sys.exc_info()[1]))
-                self.codepad(string=str(traceback.format_exc()), access=True)
+                #changed 5/18/13 added try/except in attempt to stop broken pipe from a net split
+                try:
+                    self.say('{} {}'.format(sys.exc_info()[0],sys.exc_info()[1]))
+                    self.codepad(string=str(traceback.format_exc()), access=True)
+                except socket.error:
+                    continue
 
     def not_cmd(self, cmd):
         '''string for not a command response'''
@@ -400,7 +405,9 @@ class IrcBot:
             return
 
         elif cmd != '':
-            self.say(self.not_cmd(cmd))
+            ...
+            #uncomment for showing not command, commented out for annoyance
+            #self.say(self.not_cmd(cmd))
 
     def help(self, arg=None):
         '''display help string for commands and how to use them'''
@@ -417,7 +424,7 @@ class IrcBot:
         binary = '{0}: {1}binary [text] --convert text to binary'.format(self.username,self.contact)
         ip = '{0}: {1}ip [ip address]  --display ip info [available searches today]["country_code country_name state city postal_code", "latitude, longitude", "ISP", "localtime"]'.format(self.username,self.contact)
         xbox = '{0}: {1}xbox [gamertag]  --display public status'.format(self.username,self.contact)
-        settings = '{0}: {1}settings [KEY] [VALUE] --change settings, options:[title:(True,False), copy:(True,False), giveop:(True,False), join_announce(True,False)]'.format(self.username,self.contact)
+        settings = r'{0}: {1}settings [KEY] [VALUE] --change settings, where VALUE exists unless it is None, options:{OPTIONS}'.format(self.username,self.contact, OPTIONS='{title:(true,false), copy:(true,false), giveop:(true,false), join_announce:(true,false), clearcache:None}')
         temp = '{0}: {1}temp [zipcode/city state] --display weather info'.format(self.username,self.contact)
         rev = '{0}: {1}review [name of game] [OPTIONAL platform]  --display scores for game, optional platform to specify more in depth'.format(self.username,self.contact)
         callbothelp = '{0}: {1}call [OPTION]  OPTIONS = [craps, alchemy] --call another bot to join'.format(self.username, self.contact)
@@ -563,6 +570,21 @@ class IrcBot:
                     self.show_title = True
                     self.say('show_title set to {}'.format('True'))
                     #self.show_title = eval(arg2.strip(),{'__builtins__':None})
+            elif arg1 == 'clearcache':
+                #self.__init__(h=self.host, p=self.port, c=self.channel, k=self.contact, n=self.nick)
+                self.data = None
+                self.operation = None
+                self.addrname = None
+                self.username = None
+                self.text = None
+                self.timer= None
+                self.last_seen = {} #{'metulburr':time.time()}
+                self.last_said = {}
+
+                self.sock.send("PART {0}\r\n".format(self.channel).encode())
+                #self.__init__(h=self.host, p=self.port, c=self.channel, k=self.contact, n=self.nick)
+
+                self.rejoin()
             elif arg1 == 'copy':
                 if self.username == self.owner:
                     if arg2.lower() == 'false':# or arg2 == 'True':
@@ -1064,7 +1086,9 @@ class IrcBot:
         url = 'http://www.wunderground.com/cgi-bin/findweather/getForecast'
 
         data = urlencode([('query', arg1)])
-        the_page = urlopen(url, data.encode()).read().decode()
+        #the_page = urlopen(url, data.encode()).read().decode()
+###attempt to allow name of city also, failed, but left newer code
+        the_page = urlopen(url + '?query={}'.format(arg1))
 
         soup = BeautifulSoup(the_page)
 
@@ -1093,8 +1117,10 @@ class IrcBot:
         try:
             w = wind[0].text.strip() + ' from ' + wind[1].text.strip() + ' with gusts of ' + wind[2].text.strip()
         except IndexError:
-            #w = wind[0].text.strip() + ' from ' + wind[1].text.strip()
-            w = other_tag[4].text.strip()
+            try:
+                w = wind[0].text.strip() + ' from ' + wind[1].text.strip()
+            except IndexError:
+                w = other_tag[4].text.strip()
 
         self.say('{location} | {cond} | {temp} | {tempfeel} | Wind {wind} | sunrise {sunrise} | sunset {sunset} | visability {visable} | humidity {humid}'.format(
             cond=condition_tag.text,
@@ -1261,8 +1287,3 @@ if __name__ == '__main__':
         print('contact: ', connect.contact)
     except NameError:
         print(show_help)
-
-
-
-
-
