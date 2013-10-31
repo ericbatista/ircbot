@@ -15,13 +15,20 @@ import random
 import subprocess
 from bs4 import BeautifulSoup
 import urllib
-from urllib.request import urlopen
-from urllib.request import Request
+from urllib.request import urlopen, Request
+#from urllib.request import Request
 from urllib.parse import urlencode, urlparse
 import json as m_json
 import re
 import traceback
 from html.parser import HTMLParser
+import lxml.html
+import threading
+import sympy
+import math
+import multiprocessing
+import queue
+
 
 argv_flag = {'-c':None, '-h':None, '-p':None, '-k':None, '-n':None}
 flag_help = {'-c':'channel ',
@@ -116,9 +123,10 @@ class IrcBot:
             'site':lambda:self.sitedown(),
             'doc':lambda:self.doc(),
             'news':lambda:self.news(),
+            'eq':lambda:self.eq_solver(),
             }
 
-        self.op = ['metulburr','Awesome-O', 'robgraves','corp769',
+        self.op = ['metulburr','pdq', 'robgraves','corp769',
                   'metulburr1', 'robgravesny', 'Optichip', 'ArchBender']
         self.version = 'MetulBot version: 0.1.7'
         self.data = None
@@ -266,7 +274,7 @@ class IrcBot:
             if self.announce is True:
                 if self.username == self.nick:
                     pass
-                elif self.username in ['Craps_Dealer', 'alchemybot', 'ChanServ', 'ArchBender', 'metulburr']:
+                elif self.username in ['Craps_Dealer', 'pdq','gpix', 'ChanServ', 'ArchBender', 'metulburr']:
                     pass
                 else:
                     self.say('Hello, {} my commands are listed in {}help'.format(self.username, self.contact))
@@ -397,6 +405,8 @@ class IrcBot:
                     self.doc(arg1)
                 elif cmd == 'news':
                     self.news(args)
+                elif cmd == 'eq':
+                    self.eq_solver(args)
 
             #self.say('cmd is: {}'.format(cmd))
             #self.say('first two args are: {0} {1}'.format(arg1, arg2))
@@ -432,6 +442,7 @@ class IrcBot:
         sitedown = '{0}: {1}site  [SITE.COM] --display whether site is down or not'.format(self.username,self.contact)
         doc = '{0}: {1}doc [NAME] where name may be keyword, topic, function, module, package, etc. Returns link of pasted docstring'.format(self.username,self.contact)
         news = '{0}: {1}news  --display news; {1}news [STRING] -- add string to news, if string is "clear", will clear news feed'.format(self.username,self.contact)
+        equation = '{0}: {1}eq [expression] simplify/evaluate expression; using single character variables; expressions saved in var "exp"; exp is sympy object with sympy methods'.format(self.username,self.contact)
         if arg is None:
             tmp = []
             for key in self.list_cmds.keys():
@@ -478,6 +489,8 @@ class IrcBot:
                 self.say(doc)
             if arg == 'news':
                 self.say(news)
+            if arg == 'eq':
+                self.say(equation)
 
     def epoch(self, num=None):
         '''display epoch time based on arg'''
@@ -1236,6 +1249,113 @@ class IrcBot:
             obj = self.json_data.load()
             obj['news'].insert(0, args[0])
             self.json_data.save(obj)
+
+    def eq_solver(self, args=None):
+        if not args:
+            self.help('eq')
+            return
+
+        stringer = ' '.join(args[0])
+        """
+                try:
+                    eq1 = s.replace('=', '-(') + ')'
+                    end = eval(eq1, {'x':1j})
+                    result = -end.real/end.imag
+                    self.say('x = {}'.format(result))
+                except SyntaxError:
+                    if '__' in s:
+                        self.say('__ not allowed for input')
+                        return
+                    result = eval(s)
+                    self.say('{}'.format(result))
+        """
+        if stringer[:3] == 'exp':
+            stringer = 'self.' + stringer
+        else:
+            banned = ['threading', 'socket', 'self', '__', 'os.', 'subprocess', 'system', 'socket', 'urllib', 'json', 'sys', 'html', 'lxml', 'for', 'def', 'class', 'import', 'while', 'lambda', 'return']
+            for ban in banned:
+                if ban in stringer:
+                    self.say('{} not allowed in input'.format(ban))
+                    return
+
+        my_queue = multiprocessing.Queue()
+        proc = multiprocessing.Process(target=self.evaler, args=(stringer, my_queue))
+        proc.start()
+        proc.join(7.0)
+        if proc.is_alive():
+            proc.terminate()
+            time.sleep(0.1)
+        try:
+            #self.say(my_queue.get(timeout=0.1))
+            q = my_queue.get(timeout=0.1)
+        except queue.Empty:
+            #self.say("process was terminated")
+            q = "process was terminated"
+        self.exp = q
+        self.say(self.exp)
+
+        #self.exp = eval(stringer)
+        #self.say(self.exp)
+
+    def evaler(self, stringer, que):
+        a = sympy.Symbol('a')
+        b = sympy.Symbol('b')
+        c = sympy.Symbol('c')
+        d = sympy.Symbol('d')
+        e = sympy.Symbol('e')
+        f = sympy.Symbol('f')
+        g = sympy.Symbol('g')
+        h = sympy.Symbol('h')
+        i = sympy.Symbol('i')
+        j = sympy.Symbol('j')
+        k = sympy.Symbol('k')
+        l = sympy.Symbol('l')
+        m = sympy.Symbol('m')
+        n = sympy.Symbol('n')
+        o = sympy.Symbol('o')
+        p = sympy.Symbol('p')
+        q = sympy.Symbol('q')
+        r = sympy.Symbol('r')
+        s = sympy.Symbol('s')
+        t = sympy.Symbol('t')
+        u = sympy.Symbol('u')
+        v = sympy.Symbol('v')
+        w = sympy.Symbol('w')
+        x = sympy.Symbol('x')
+        y = sympy.Symbol('y')
+        z = sympy.Symbol('z')
+
+        A = sympy.Symbol('A')
+        B = sympy.Symbol('B')
+        C = sympy.Symbol('C')
+        D = sympy.Symbol('D')
+        E = sympy.Symbol('E')
+        F = sympy.Symbol('F')
+        G = sympy.Symbol('G')
+        H = sympy.Symbol('H')
+        I = sympy.Symbol('I')
+        J = sympy.Symbol('J')
+        K = sympy.Symbol('K')
+        L = sympy.Symbol('L')
+        M = sympy.Symbol('M')
+        N = sympy.Symbol('N')
+        O = sympy.Symbol('O')
+        P = sympy.Symbol('P')
+        Q = sympy.Symbol('Q')
+        R = sympy.Symbol('R')
+        S = sympy.Symbol('S')
+        T = sympy.Symbol('T')
+        U = sympy.Symbol('U')
+        V = sympy.Symbol('V')
+        W = sympy.Symbol('W')
+        X = sympy.Symbol('X')
+        Y = sympy.Symbol('Y')
+        Z = sympy.Symbol('Z')
+
+        exp = eval(stringer)
+        self.exp = exp
+        que.put(exp)
+
 class JSON:
     def __init__(self):
         self.filename = 'jsondata.dat'
@@ -1287,3 +1407,8 @@ if __name__ == '__main__':
         print('contact: ', connect.contact)
     except NameError:
         print(show_help)
+
+
+
+
+
